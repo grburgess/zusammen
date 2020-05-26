@@ -23,7 +23,7 @@ def find_data_files(directory):
 
 setup(
     version=versioneer.get_version(),
-    include_package_data=True,
-    package_data={"": extra_files},
+#    include_package_data=True,
+#    package_data={"": extra_files},
     cmdclass=versioneer.get_cmdclass(),
 )
