@@ -901,9 +901,11 @@ class DataSet(object):
 
                 n_dets.append(interval.n_detectors)
 
+                grb_id.append(self._grb_id[grb.name])
+                
                 for j, (det, datum) in enumerate(interval.data.items()):
 
-                    grb_id.append(self._grb_id[grb.name])
+
 
                     observed_counts[i, j,
                                     :datum.n_chans] = datum.observation
@@ -960,6 +962,8 @@ class DataSet(object):
         stan_data['idx_background_zero'] = idx_background_zero.astype(int)
         stan_data['N_bkg_zero'] = n_bkg_zero.astype(int)
         stan_data['N_bkg_nonzero'] = n_bkg_nonzero.astype(int)
+        stan_data['N_chan'] = n_chan.astype(int)
+        stan_data['N_echan'] = n_echan.astype(int)
 
         stan_data['ebounds_lo'] = ebounds_lo
         stan_data['ebounds_hi'] = ebounds_hi

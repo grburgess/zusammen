@@ -5,7 +5,7 @@ import versioneer
 
 
 # Create list of data files
-def find_data_files(directory):
+def find_stan_files(directory):
 
     paths = []
 
@@ -13,17 +13,20 @@ def find_data_files(directory):
 
         for filename in filenames:
 
-            paths.append(os.path.join("..", path, filename))
+            if ".stan" in filename:
+            
+                paths.append(os.path.join("..", path, filename))
 
     return paths
 
 
-#extra_files = find_data_files("popsynth/data")
+stan_files = find_stan_files("zusammen/stan_models")
 
+data_files = {"": stan_files}
 
 setup(
     version=versioneer.get_version(),
-#    include_package_data=True,
-#    package_data={"": extra_files},
+    include_package_data=True,
+    package_data=data_files,
     cmdclass=versioneer.get_cmdclass(),
 )
