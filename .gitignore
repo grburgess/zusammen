@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/zusammen/stan_models/*.d
+/zusammen/stan_models/*.hpp
+/zusammen/stan_models/*.o
