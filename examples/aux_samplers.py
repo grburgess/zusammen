@@ -42,6 +42,23 @@ class DurationSampler(popsynth.AuxiliarySampler):
         self._true_values = 1.5 * t90
 
 
+class EpeakObsSampler(popsynth.AuxiliarySampler):
+    def __init__(self):
+        """
+        Samples Epeak in the observed frame
+        """
+
+        super(EpeakObsSampler, self).__init__(
+            name="log_ep_obs", observed=False, uses_distance=True
+        )
+
+    def true_sampler(self, size):
+
+        secondary = self._secondary_samplers["log_ep"]
+
+        self._true_values = secondary.true_values - np.log10(1 + self._distance)
+
+
 class LumSampler(popsynth.DerivedLumAuxSampler):
     """
     Sample luminosity from Epeak
@@ -57,11 +74,11 @@ class LumSampler(popsynth.DerivedLumAuxSampler):
 
     def compute_luminosity(self):
 
-        secondary = self._secondary_samplers["Epeak"]
+        secondary = self._secondary_samplers["log_ep"]
 
-        Epeak = 10 ** secondary.true_values  # keV
+        ep = 10 ** secondary.true_values  # keV
 
-        lum = self.Nrest * np.power(Epeak / 100, self.gamma)  # erg s^-1
+        lum = self.Nrest * np.power(ep / 100, self.gamma)  # erg s^-1
 
         tmp = np.random.normal(0, self.s_scat * lum)
 
