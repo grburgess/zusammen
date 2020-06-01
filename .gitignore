@@ -130,3 +130,6 @@ dmypy.json
 /zusammen/stan_models/*.d
 /zusammen/stan_models/*.hpp
 /zusammen/stan_models/*.o
+
+# hdf5
+.h5
