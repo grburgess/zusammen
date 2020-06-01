@@ -1,6 +1,7 @@
 import numpy as np
 import numba as nb
 from interpolation import interp
+from scipy.special import gamma, gammaincc
 
 from cosmogrb.sampler.cpl_functions import cpl
 from cosmogrb.utils.numba_array import VectorFloat64
@@ -69,9 +70,9 @@ def folded_cpl_evolution(
     peak_flux,
     ep_start,
     ep_tau,
-    alpha,
     emin,
     emax,
+    alpha,
     redshift,
     Nrest,
     gamma,
@@ -84,9 +85,9 @@ def folded_cpl_evolution(
         peak_flux,
         ep_start,
         ep_tau,
-        alpha,
         emin,
         emax,
+        alpha,
         redshift,
         Nrest,
         gamma,
@@ -116,9 +117,9 @@ def energy_integrated_evolution(
         peak_flux,
         ep_start,
         ep_tau,
-        alpha,
         emin,
         emax,
+        alpha,
         redshift,
         Nrest,
         gamma,
@@ -155,12 +156,12 @@ def time_integrated_evolution(
         peak_flux,
         ep_start,
         ep_tau,
+        emin,
+        emax,
         alpha,
         redshift,
         Nrest,
         gamma,
-        emin,
-        emax,
         effective_area,
     )
 
@@ -251,9 +252,9 @@ def sample_energy(
         peak_flux,
         ep_start,
         ep_tau,
-        alpha,
         emin,
         emax,
+        alpha,
         redshift,
         Nrest,
         gamma,
@@ -306,9 +307,9 @@ def sample_energy(
                         peak_flux,
                         ep_start,
                         ep_tau,
-                        alpha,
                         emin,
                         emax,
+                        alpha,
                         redshift,
                         Nrest,
                         gamma,
