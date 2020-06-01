@@ -70,9 +70,13 @@ class LumSampler(popsynth.DerivedLumAuxSampler):
 
     def __init__(self):
 
-        super(LumSampler, self).__init__(name="luminosity")
+        super(LumSampler, self).__init__(name="obs_lum")
 
     def compute_luminosity(self):
+
+        return self._true_values
+
+    def true_sampler(self, size):
 
         secondary = self._secondary_samplers["log_ep"]
 
@@ -82,11 +86,7 @@ class LumSampler(popsynth.DerivedLumAuxSampler):
 
         tmp = np.random.normal(0, self.s_scat * lum)
 
-        return lum + tmp
-
-    def true_sampler(self, size):
-
-        self._true_values = self.compute_luminosity()
+        self._true_values = lum + tmp
 
 
 class DerivedEpeakSampler(popsynth.AuxiliarySampler):
