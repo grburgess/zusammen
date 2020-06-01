@@ -1,7 +1,6 @@
 import numpy as np
 import numba as nb
 from interpolation import interp
-from scipy.special import gamma, gammaincc
 
 from cosmogrb.sampler.cpl_functions import cpl
 from cosmogrb.utils.numba_array import VectorFloat64
