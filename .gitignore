@@ -132,4 +132,4 @@ dmypy.json
 /zusammen/stan_models/*.o
 
 # hdf5
-.h5
+*.h5
