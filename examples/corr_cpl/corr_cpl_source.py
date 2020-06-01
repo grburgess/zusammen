@@ -20,7 +20,6 @@ class CorrCPLSourceFunction(SourceFunction):
         alpha=-1.0,
         emin=10.0,
         emax=1e4,
-        redshift=1.0,
         Nrest=1e52,
         gamma=1.5,
         response=None,
@@ -30,7 +29,6 @@ class CorrCPLSourceFunction(SourceFunction):
         self._ep_start = ep_start
         self._ep_tau = ep_tau
         self._alpha = alpha
-        self._redshift = redshift
         self._Nrest = Nrest
         self._gamma = gamma
 
@@ -51,7 +49,7 @@ class CorrCPLSourceFunction(SourceFunction):
             emin=self._emin,
             emax=self._emax,
             alpha=self._alpha,
-            redshift=self._redshift,
+            redshift=self._source._z,
             Nrest=self._Nrest,
             gamma=self._gamma,
         )
@@ -85,7 +83,7 @@ class CorrCPLSourceFunction(SourceFunction):
             ep_start=self._ep_start,
             ep_tau=self._ep_tau,
             alpha=self._alpha,
-            redshift=self._redshift,
+            redshift=self._source._z,
             Nrest=self._Nrest,
             gamma=self._gamma,
             effective_area=ea,
@@ -102,7 +100,7 @@ class CorrCPLSourceFunction(SourceFunction):
             ep_start=self._ep_start,
             ep_tau=self._ep_tau,
             alpha=self._alpha,
-            redshift=self._redshift,
+            redshift=self._source._z,
             Nrest=self._Nrest,
             gamma=self._gamma,
             effective_area=self._response.effective_area_packed,
@@ -119,7 +117,7 @@ class CorrCPLSourceFunction(SourceFunction):
             ep_start=self._ep_start,
             ep_tau=self._ep_tau,
             alpha=self._alpha,
-            redshift=self._redshift,
+            redshift=self._source._z,
             Nrest=self._Nrest,
             gamma=self._gamma,
             emin=self._emin,
