@@ -91,7 +91,7 @@ class LumSampler(popsynth.DerivedLumAuxSampler):
 
 class DerivedEpeakSampler(popsynth.AuxiliarySampler):
     """
-    Samples Epeak for a given L
+    Samples Epeak for a given L - probably not the way to go
     """
 
     Nrest = popsynth.auxiliary_sampler.AuxiliaryParameter(default=1e52)
