@@ -42,39 +42,56 @@ class DurationSampler(popsynth.AuxiliarySampler):
         self._true_values = 1.5 * t90
 
 
+class EpeakObsSampler(popsynth.AuxiliarySampler):
+    def __init__(self):
+        """
+        Samples Epeak in the observed frame
+        """
+
+        super(EpeakObsSampler, self).__init__(
+            name="log_ep_obs", observed=False, uses_distance=True
+        )
+
+    def true_sampler(self, size):
+
+        secondary = self._secondary_samplers["log_ep"]
+
+        self._true_values = secondary.true_values - np.log10(1 + self._distance)
+
+
 class LumSampler(popsynth.DerivedLumAuxSampler):
     """
     Sample luminosity from Epeak
     """
 
-    Nrest = popsynth.auxiliary_sampler.AuxiliaryParameter(default=1e52)
-    gamma = popsynth.auxiliary_sampler.AuxiliaryParameter(default=1.5, vmin=0)
     s_scat = popsynth.auxiliary_sampler.AuxiliaryParameter(default=0.3)
 
     def __init__(self):
 
-        super(LumSampler, self).__init__(name="luminosity")
+        super(LumSampler, self).__init__(name="obs_lum")
 
     def compute_luminosity(self):
 
-        secondary = self._secondary_samplers["Epeak"]
-
-        Epeak = 10 ** secondary.true_values  # keV
-
-        lum = self.Nrest * np.power(Epeak / 100, self.gamma)  # erg s^-1
-
-        tmp = np.random.normal(0, self.s_scat * lum)
-
-        return lum + tmp
+        return self._true_values
 
     def true_sampler(self, size):
 
-        self._true_values = self.compute_luminosity()
+        log_ep = self._secondary_samplers["log_ep"].true_values
+        log_nrest = self._secondary_samplers["log_nrest"].true_values
+        gamma = self._secondary_samplers["gamma"].true_values
+
+        ep = np.power(10, log_ep)  # keV
+
+        lum = np.power(10, log_nrest) * np.power(ep / 100, gamma)  # erg s^-1
+
+        tmp = np.random.normal(0, self.s_scat * lum)
+
+        self._true_values = lum + tmp
 
 
 class DerivedEpeakSampler(popsynth.AuxiliarySampler):
     """
-    Samples Epeak for a given L
+    Samples Epeak for a given L - probably not the way to go
     """
 
     Nrest = popsynth.auxiliary_sampler.AuxiliaryParameter(default=1e52)
