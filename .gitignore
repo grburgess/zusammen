@@ -130,3 +130,14 @@ dmypy.json
 /zusammen/stan_models/*.d
 /zusammen/stan_models/*.hpp
 /zusammen/stan_models/*.o
+
+# hdf5
+*.h5
+
+# Dask
+.ipynb_checkpoints/
+dask-worker-space/
+_build/
+mydask.png
+dataframes/data
+.idea/
