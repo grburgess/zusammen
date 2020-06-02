@@ -64,8 +64,6 @@ class LumSampler(popsynth.DerivedLumAuxSampler):
     Sample luminosity from Epeak
     """
 
-    Nrest = popsynth.auxiliary_sampler.AuxiliaryParameter(default=1e52)
-    gamma = popsynth.auxiliary_sampler.AuxiliaryParameter(default=1.5, vmin=0)
     s_scat = popsynth.auxiliary_sampler.AuxiliaryParameter(default=0.3)
 
     def __init__(self):
@@ -78,11 +76,13 @@ class LumSampler(popsynth.DerivedLumAuxSampler):
 
     def true_sampler(self, size):
 
-        secondary = self._secondary_samplers["log_ep"]
+        log_ep = self._secondary_samplers["log_ep"].true_values
+        log_nrest = self._secondary_samplers["log_nrest"].true_values
+        gamma = self._secondary_samplers["gamma"].true_values
 
-        ep = 10 ** secondary.true_values  # keV
+        ep = np.power(10, log_ep)  # keV
 
-        lum = self.Nrest * np.power(ep / 100, self.gamma)  # erg s^-1
+        lum = np.power(10, log_nrest) * np.power(ep / 100, gamma)  # erg s^-1
 
         tmp = np.random.normal(0, self.s_scat * lum)
 
