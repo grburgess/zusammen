@@ -11,10 +11,8 @@ from threeML import TimeSeriesBuilder
 
 
 class GRBProcessor(object):
-    def __init__(self, gbm_grb, n_nai_to_use=3):
+    def __init__(self, gbm_grb, n_nai_to_use=3, use_bb=False):
         """
-
-
         :param gbm_grb: 
         :param n_nai_to_use: 
         :returns: 
@@ -27,8 +25,10 @@ class GRBProcessor(object):
 
         self._n_nai_to_use = int(n_nai_to_use)
 
+        self._use_bb = use_bb
+
         self._config_dict = collections.OrderedDict()
-        self._config_dict["n_intervals"] = 1
+
         self._config_dict["z"] = float(self._grb_save.z)
 
         if_directory_not_existing_then_make(self._grb_save.name)
@@ -71,6 +71,7 @@ class GRBProcessor(object):
         # the detector distance to the GRB
 
         idx = angular_distances.argsort()
+
         self._lc_names = list(lc_names[idx][: self._n_nai_to_use])
         self._lc_names.append(bgo_det)
         self._lc_names = [str(x) for x in self._lc_names]
@@ -87,7 +88,7 @@ class GRBProcessor(object):
 
         det_dic = {}
 
-        for name in self._lc_names:
+        for i, name in enumerate(self._lc_names):
 
             if name.startswith("n"):
 
@@ -114,23 +115,64 @@ class GRBProcessor(object):
 
             # for now do nothing else
 
-            if False:
+            if self._use_bb:
 
-                ts.create_bins(
-                    0, self._grb_save.duration, method="bayesblocks", p0=0.01
+                if i < 1:
+
+                    ts.create_time_bins(
+                        -25, self._grb_save.duration + 20, method="bayesblocks", p0=0.05
+                    )
+
+                    bins_to_use = ts
+
+                else:
+
+                    ts.read_bins(bins_to_use)
+
+                
+
+
+                n_intervals = len(
+                    ts.bins.containing_interval(0, self._grb_save.duration,inner=True)
                 )
+
+
+                if n_intervals > 1:
+                
+                    ts.write_pha_from_binner(
+                        file_name=os.path.join(self._grb_save.name, name),
+                        start=0.0,
+                        stop=self._grb_save.duration,
+                        inner=True,
+                        force_rsp_write=True,
+                        overwrite=True,
+                    )
+
+                
+                self._config_dict["n_intervals"] = n_intervals
+
+                if n_intervals > 1:
+
+                    fig = ts.view_lightcurve(use_binner=True)
+
+                    fig.savefig(
+                        f"{os.path.join(self._grb_save.name, name)}_lc.png",
+                        bbox_inches="tight",
+                    )
 
             else:
 
+                self._config_dict["n_intervals"] = 1
+
                 ts.set_active_time_interval(f"0-{self._grb_save.duration}")
 
-            plugin = ts.to_spectrumlike()
+                plugin = ts.to_spectrumlike()
 
-            plugin.write_pha(
-                filename=os.path.join(self._grb_save.name, name),
-                force_rsp_write=True,
-                overwrite=True,
-            )
+                plugin.write_pha(
+                    filename=os.path.join(self._grb_save.name, name),
+                    force_rsp_write=True,
+                    overwrite=True,
+                )
 
             self._config_dict["detectors"] = det_dic
 
@@ -144,14 +186,24 @@ class GRBProcessor(object):
 
 
 class AnalysisBuilder(object):
+    def __init__(self, survey_file, use_all=False, use_bb=False):
 
-    def __init__(self, survey_file, use_all=False):
+        if isinstance(survey_file, str):
 
-        self._survey = Survey.from_file('survey.h5')
+            self._survey = Survey.from_file(survey_file)
+
+        else:
+
+            assert isinstance(survey_file, Survey)
+
+            self._survey = survey_file
+
         self._config_dict = collections.OrderedDict()
         for k, v in self._survey.items():
 
-            process = GRBProcessor(v.grb)
+            print(k)
+
+            process = GRBProcessor(v.grb, use_bb=use_bb)
 
             self._config_dict[k] = process.yaml_params
 
