@@ -872,8 +872,9 @@ class DataSet(object):
             (
                 self._n_intervals,
                 self._max_n_detectors,
-                self._max_n_echans,
+                
                 self._max_n_chans,
+                self._max_n_echans
             )
         )
 
@@ -938,10 +939,16 @@ class DataSet(object):
 
                     background_errors[i, j, : datum.n_chans] = datum.background_error
 
-                    responses[
-                        i, j, : datum.n_echans, : datum.n_chans
-                    ] = datum.response_transpose
+                    # responses[
+                    #     i, j, : datum.n_echans, : datum.n_chans
+                    # ] = datum.response_transpose
 
+                    responses[
+                        i, j, :datum.n_chans, :  datum.n_echans
+                    ] = datum.response
+
+
+                    
                     this_mask = datum.mask_stan
 
                     masks[i, j, : len(this_mask)] = this_mask
