@@ -13,10 +13,10 @@ from threeML import TimeSeriesBuilder
 class GRBProcessor(object):
     def __init__(self, gbm_grb, n_nai_to_use=3, use_bb=False):
         """
-        :param gbm_grb: 
-        :param n_nai_to_use: 
-        :returns: 
-        :rtype: 
+        :param gbm_grb:
+        :param n_nai_to_use:
+        :returns:
+        :rtype:
 
         """
 
@@ -129,16 +129,12 @@ class GRBProcessor(object):
 
                     ts.read_bins(bins_to_use)
 
-                
-
-
                 n_intervals = len(
-                    ts.bins.containing_interval(0, self._grb_save.duration,inner=True)
+                    ts.bins.containing_interval(0, self._grb_save.duration, inner=True)
                 )
 
-
                 if n_intervals > 1:
-                
+
                     ts.write_pha_from_binner(
                         file_name=os.path.join(self._grb_save.name, name),
                         start=0.0,
@@ -148,7 +144,6 @@ class GRBProcessor(object):
                         overwrite=True,
                     )
 
-                
                 self._config_dict["n_intervals"] = n_intervals
 
                 if n_intervals > 1:
