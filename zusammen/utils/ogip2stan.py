@@ -35,7 +35,7 @@ class GRBDatum(object):
         ebounds,
         exposure,
         mask,
-        significance
+        significance,
     ):
 
         self._n_chans = len(observation)
@@ -158,17 +158,17 @@ class GRBDatum(object):
     @classmethod
     def from_ogip(cls, name, obs_file, bkg_file, rsp, selection, spectrum_number=1):
         """
-        Create the base data from FITS files. 
+        Create the base data from FITS files.
 
-        :param cls: 
-        :param name: 
-        :param obs_file: 
-        :param bkg_file: 
-        :param rsp: 
-        :param selection: 
-        :param spectrum_number: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param name:
+        :param obs_file:
+        :param bkg_file:
+        :param rsp:
+        :param selection:
+        :param spectrum_number:
+        :returns:
+        :rtype:
 
         """
 
@@ -180,7 +180,7 @@ class GRBDatum(object):
             background=bkg_file,
             response=rsp,
             spectrum_number=spectrum_number,
-            verbose=False
+            verbose=False,
         )
 
         # set the mask
@@ -197,16 +197,16 @@ class GRBDatum(object):
             ogip.response.ebounds,
             ogip.exposure,
             ogip.mask,
-            ogip.significance
+            ogip.significance,
         )
 
     def to_hdf5_file_or_group(self, name):
         """
         write the data to and HDF5 file or group
 
-        :param name: 
-        :returns: 
-        :rtype: 
+        :param name:
+        :returns:
+        :rtype:
 
         """
 
@@ -225,20 +225,25 @@ class GRBDatum(object):
         f.attrs["significance"] = self._significance
 
         f.create_dataset(
-            "observation", data=self._observation, compression="lzf", shuffle=True)
-        f.create_dataset("background", data=self._background,
-                         compression="lzf", shuffle=True)
-        f.create_dataset(
-            "background_error", data=self._background_error, compression="lzf", shuffle=True
+            "observation", data=self._observation, compression="lzf", shuffle=True
         )
-        f.create_dataset("response", data=self._response,
-                         compression="lzf", shuffle=True)
         f.create_dataset(
-            "mc_energies", data=self._mc_energies, compression="lzf", shuffle=True)
-        f.create_dataset("ebounds", data=self._ebounds,
-                         compression="lzf", shuffle=True)
-        f.create_dataset("mask", data=self._mask,
-                         compression="lzf", shuffle=True)
+            "background", data=self._background, compression="lzf", shuffle=True
+        )
+        f.create_dataset(
+            "background_error",
+            data=self._background_error,
+            compression="lzf",
+            shuffle=True,
+        )
+        f.create_dataset(
+            "response", data=self._response, compression="lzf", shuffle=True
+        )
+        f.create_dataset(
+            "mc_energies", data=self._mc_energies, compression="lzf", shuffle=True
+        )
+        f.create_dataset("ebounds", data=self._ebounds, compression="lzf", shuffle=True)
+        f.create_dataset("mask", data=self._mask, compression="lzf", shuffle=True)
 
         if is_file:
 
@@ -249,10 +254,10 @@ class GRBDatum(object):
         """
         read in the data from an HDF5 file
 
-        :param cls: 
-        :param name: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param name:
+        :returns:
+        :rtype:
 
         """
 
@@ -295,7 +300,7 @@ class GRBDatum(object):
             ebounds,
             exposure,
             mask,
-            significance
+            significance,
         )
 
 
@@ -358,14 +363,14 @@ class GRBInterval(object):
     def from_dict(cls, d, grb_name, spectrum_number=1):
         """
         create from a dictionary that is initially
-        from the yaml file and will trigger the reading 
+        from the yaml file and will trigger the reading
         of the OGIP files
 
-        :param cls: 
-        :param d: 
-        :param spectrum_number: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param d:
+        :param spectrum_number:
+        :returns:
+        :rtype:
 
         """
 
@@ -398,7 +403,8 @@ class GRBInterval(object):
             rsp_file = glob(os.path.join(directory, f"*{det}*.rsp"))[0]
 
             datum = GRBDatum.from_ogip(
-                det, obs_file, bak_file, rsp_file, dets[det], spectrum_number)
+                det, obs_file, bak_file, rsp_file, dets[det], spectrum_number
+            )
 
             data.append(datum)
         return cls(grb_name, *data)
@@ -408,9 +414,9 @@ class GRBInterval(object):
         write the interval to HDF5 which triggers the recursive
         writers
 
-        :param name: 
-        :returns: 
-        :rtype: 
+        :param name:
+        :returns:
+        :rtype:
 
         """
 
@@ -439,10 +445,10 @@ class GRBInterval(object):
     def from_hdf5_file_or_group(cls, name):
         """FIXME! briefly describe function
 
-        :param cls: 
-        :param name: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param name:
+        :returns:
+        :rtype:
 
         """
 
@@ -474,15 +480,14 @@ class GRBInterval(object):
 
 
 class GRBData(object):
-
     def __init__(self, grb_name, *intervals, z=None):
         """
         Contains all the intervals from a single
         GRB
 
-        :param grb_name: 
-        :returns: 
-        :rtype: 
+        :param grb_name:
+        :returns:
+        :rtype:
 
         """
 
@@ -543,21 +548,21 @@ class GRBData(object):
 
     @property
     def luminosity_distance(self):
-        return cosmo.luminosity_distance(self._z).to('cm').value
+        return cosmo.luminosity_distance(self._z).to("cm").value
 
     @classmethod
     def from_dict(cls, grb_name, d):
         """
 
-        construct from dictionary via 
-        recursively loading from FITS 
+        construct from dictionary via
+        recursively loading from FITS
         files
 
-        :param cls: 
-        :param grb_name: 
-        :param d: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param grb_name:
+        :param d:
+        :returns:
+        :rtype:
 
         """
 
@@ -567,7 +572,7 @@ class GRBData(object):
         z = d["z"]
         for i in range(n_intervals):
 
-            interval = GRBInterval.from_dict(d, grb_name, spectrum_number=i+1)
+            interval = GRBInterval.from_dict(d, grb_name, spectrum_number=i + 1)
 
             intervals.append(interval)
 
@@ -579,10 +584,10 @@ class GRBData(object):
 
         construct from an HDF5 file or group
 
-        :param cls: 
-        :param name: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param name:
+        :returns:
+        :rtype:
 
         """
 
@@ -620,9 +625,9 @@ class GRBData(object):
         """
         write this GRB to a file or group
 
-        :param name: 
-        :returns: 
-        :rtype: 
+        :param name:
+        :returns:
+        :rtype:
 
         """
 
@@ -657,14 +662,13 @@ class GRBData(object):
 
 
 class DataSet(object):
-
     def __init__(self, *grbs):
         """
         A data set of GRBs with sub intervals. Serves as an
         interface between FITS/HDF5/Stan to keep things organized
 
-        :returns: 
-        :rtype: 
+        :returns:
+        :rtype:
 
         """
 
@@ -687,7 +691,7 @@ class DataSet(object):
             n_chans.append(grb.max_n_chans)
             n_dets.append(grb.max_n_detectors)
             # tag for stan
-            self._grb_id[grb.name] = i+1
+            self._grb_id[grb.name] = i + 1
 
         self._n_grbs = len(grbs)
 
@@ -698,13 +702,13 @@ class DataSet(object):
     @classmethod
     def from_dict(cls, d):
         """
-        construct from a dictionary with the layout 
+        construct from a dictionary with the layout
         specified in the from_yaml function
 
-        :param cls: 
-        :param d: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param d:
+        :returns:
+        :rtype:
 
         """
 
@@ -729,14 +733,14 @@ class DataSet(object):
         """
 
         Construct from a yaml file that specifies
-        where the PHA/FITS files are. This is to 
+        where the PHA/FITS files are. This is to
         initially build the data sets and then dump
         them to HDF5. The yaml file should look like
 
         grb_name:
            n_intervals: 4
            dir: ~/home/location
-           z=1    
+           z=1
            detectors:
              n1:
                - 10-900
@@ -744,10 +748,10 @@ class DataSet(object):
                - 250-30000
 
 
-        :param cls: 
-        :param file_name: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param file_name:
+        :returns:
+        :rtype:
 
         """
 
@@ -768,10 +772,10 @@ class DataSet(object):
         """
         Read the data set from an HDF5 file
 
-        :param cls: 
-        :param file_name: 
-        :returns: 
-        :rtype: 
+        :param cls:
+        :param file_name:
+        :returns:
+        :rtype:
 
         """
 
@@ -805,9 +809,9 @@ class DataSet(object):
         """
         Write the entire GRB data set to an HDF5 file
 
-        :param file_name: 
-        :returns: 
-        :rtype: 
+        :param file_name:
+        :returns:
+        :rtype:
 
         """
 
@@ -846,39 +850,54 @@ class DataSet(object):
         stan_data["max_n_chan"] = self._max_n_chans
 
         observed_counts = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
         background_counts = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
         background_errors = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
 
         idx_background_zero = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
         idx_background_nonzero = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
         n_bkg_zero = np.zeros((self._n_intervals, self._max_n_detectors))
         n_bkg_nonzero = np.zeros((self._n_intervals, self._max_n_detectors))
 
         responses = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_echans, self._max_n_chans))
+            (
+                self._n_intervals,
+                self._max_n_detectors,
+                
+                self._max_n_chans,
+                self._max_n_echans
+            )
+        )
 
         exposures = np.zeros((self._n_intervals, self._max_n_detectors))
         n_echan = np.zeros((self._n_intervals, self._max_n_detectors))
         n_chan = np.zeros((self._n_intervals, self._max_n_detectors))
 
-        masks = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+        masks = np.zeros((self._n_intervals, self._max_n_detectors, self._max_n_chans))
         n_channels_used = np.zeros((self._n_intervals, self._max_n_detectors))
         grb_id = np.zeros(self._n_intervals)
         ebounds_lo = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_echans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_echans)
+        )
         ebounds_hi = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_echans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_echans)
+        )
 
         cbounds_lo = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
         cbounds_hi = np.zeros(
-            (self._n_intervals, self._max_n_detectors, self._max_n_chans))
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
 
         grb_id = []
 
@@ -902,33 +921,37 @@ class DataSet(object):
                 n_dets.append(interval.n_detectors)
 
                 grb_id.append(self._grb_id[grb.name])
-                
+
                 for j, (det, datum) in enumerate(interval.data.items()):
 
+                    observed_counts[i, j, : datum.n_chans] = datum.observation
+                    background_counts[i, j, : datum.n_chans] = datum.background
 
-
-                    observed_counts[i, j,
-                                    :datum.n_chans] = datum.observation
-                    background_counts[i, j,
-                                      : datum.n_chans] = datum.background
-
-                    idx_background_zero[i, j,
-                                        :datum.n_bkg_zero] = datum.idx_background_zero + 1
-                    idx_background_nonzero[i, j,
-                                           :datum.n_bkg_nonzero] = datum.idx_background_nonzero + 1
+                    idx_background_zero[i, j, : datum.n_bkg_zero] = (
+                        datum.idx_background_zero + 1
+                    )
+                    idx_background_nonzero[i, j, : datum.n_bkg_nonzero] = (
+                        datum.idx_background_nonzero + 1
+                    )
 
                     n_bkg_zero[i, j] = datum.n_bkg_zero
                     n_bkg_nonzero[i, j] = datum.n_bkg_nonzero
 
-                    background_errors[i, j,
-                                      :datum.n_chans] = datum.background_error
+                    background_errors[i, j, : datum.n_chans] = datum.background_error
 
-                    responses[i, j, :datum.n_echans,
-                              :datum.n_chans] = datum.response_transpose
+                    # responses[
+                    #     i, j, : datum.n_echans, : datum.n_chans
+                    # ] = datum.response_transpose
 
+                    responses[
+                        i, j, :datum.n_chans, :  datum.n_echans
+                    ] = datum.response
+
+
+                    
                     this_mask = datum.mask_stan
 
-                    masks[i, j, :len(this_mask)] = this_mask
+                    masks[i, j, : len(this_mask)] = this_mask
 
                     # this could be a bug!
                     n_channels_used[i, j] = datum.n_channels_used
@@ -936,10 +959,10 @@ class DataSet(object):
                     n_chan[i, j] = datum.n_chans
                     n_echan[i, j] = datum.n_echans
 
-                    ebounds_lo[i, j, :datum.n_echans] = datum.ebounds_lo
+                    ebounds_lo[i, j, : datum.n_echans] = datum.ebounds_lo
                     ebounds_hi[i, j, : datum.n_echans] = datum.ebounds_hi
 
-                    cbounds_lo[i, j, :datum.n_chans] = datum.cbounds_lo
+                    cbounds_lo[i, j, : datum.n_chans] = datum.cbounds_lo
                     cbounds_hi[i, j, : datum.n_chans] = datum.cbounds_hi
 
                     exposures[i, j] = datum.exposure
@@ -949,32 +972,31 @@ class DataSet(object):
                 # iterate the interval
                 i += 1
 
-        stan_data['object_idx'] = np.array(grb_id).astype(int)
-        stan_data['grb_id'] = np.array(grb_id).astype(int)
+        stan_data["object_idx"] = np.array(grb_id).astype(int)
+        stan_data["grb_id"] = np.array(grb_id).astype(int)
 
-        stan_data['N_dets'] = n_dets
+        stan_data["N_dets"] = n_dets
 
-        stan_data['observed_counts'] = observed_counts
-        stan_data['background_counts'] = background_counts
-        stan_data['background_errors'] = background_errors
-        stan_data['idx_background_nonzero'] = idx_background_nonzero.astype(
-            int)
-        stan_data['idx_background_zero'] = idx_background_zero.astype(int)
-        stan_data['N_bkg_zero'] = n_bkg_zero.astype(int)
-        stan_data['N_bkg_nonzero'] = n_bkg_nonzero.astype(int)
-        stan_data['N_chan'] = n_chan.astype(int)
-        stan_data['N_echan'] = n_echan.astype(int)
+        stan_data["observed_counts"] = observed_counts
+        stan_data["background_counts"] = background_counts
+        stan_data["background_errors"] = background_errors
+        stan_data["idx_background_nonzero"] = idx_background_nonzero.astype(int)
+        stan_data["idx_background_zero"] = idx_background_zero.astype(int)
+        stan_data["N_bkg_zero"] = n_bkg_zero.astype(int)
+        stan_data["N_bkg_nonzero"] = n_bkg_nonzero.astype(int)
+        stan_data["N_chan"] = n_chan.astype(int)
+        stan_data["N_echan"] = n_echan.astype(int)
 
-        stan_data['ebounds_lo'] = ebounds_lo
-        stan_data['ebounds_hi'] = ebounds_hi
-        stan_data['cbounds_lo'] = cbounds_lo
-        stan_data['cbounds_hi'] = cbounds_hi
-        stan_data['exposure'] = exposures
-        stan_data['response'] = responses
-        stan_data['mask'] = masks.astype(int)
-        stan_data['N_channels_used'] = n_channels_used.astype(int)
+        stan_data["ebounds_lo"] = ebounds_lo
+        stan_data["ebounds_hi"] = ebounds_hi
+        stan_data["cbounds_lo"] = cbounds_lo
+        stan_data["cbounds_hi"] = cbounds_hi
+        stan_data["exposure"] = exposures
+        stan_data["response"] = responses
+        stan_data["mask"] = masks.astype(int)
+        stan_data["N_channels_used"] = n_channels_used.astype(int)
 
-        stan_data['dl'] = dl
-        stan_data['z'] = z
+        stan_data["dl"] = dl
+        stan_data["z"] = z
 
         return stan_data
