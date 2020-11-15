@@ -23,11 +23,11 @@ def golenetskii_corr(ep, Nrest, gamma, z):
 
     dl = luminosity_distance(z)  # cm
 
-    logepr = np.log((1 + z) * ep / 100)
+    logepr = np.log10((1 + z) * ep / 100)
 
-    logF = np.log(Nrest) - np.log(4 * np.pi * dl * dl) + gamma * logepr
+    logF = np.log10(Nrest) - np.log10(4 * np.pi * dl * dl) + gamma * logepr
 
-    return np.exp(logF)
+    return np.power(10, logF)
 
 
 @nb.njit(fastmath=True, cache=False)
@@ -48,9 +48,9 @@ def corr_cpl_evolution(
     N = time.shape[0]
     M = energy.shape[0]
 
-    a=10.
-    b=1e4
-    
+    a = 10.0
+    b = 1e4
+
     out = np.empty((N, M))
 
     for n in range(N):
