@@ -139,7 +139,7 @@ class GRBProcessor(object):
                         file_name=os.path.join(self._grb_save.name, name),
                         start=0.0,
                         stop=self._grb_save.duration,
-                        inner=True,
+                        # inner=True,
                         force_rsp_write=True,
                         overwrite=True,
                     )
