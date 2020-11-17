@@ -148,7 +148,8 @@ dataframes/data
 *.d
 examples/stan/cor_test
 
-# 3ml
+# 3ml/analysis
 *.pha
 *.rsp
 *.png
+*.nc
