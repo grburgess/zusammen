@@ -147,3 +147,8 @@ dataframes/data
 *.hpp
 *.d
 examples/stan/cor_test
+
+# 3ml
+*.pha
+*.rsp
+*.png
