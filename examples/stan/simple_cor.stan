@@ -83,8 +83,8 @@ transformed data {
 
 parameters {
 
-  real<lower=0.5, upper=10> gamma;
-  real<lower=-10, upper=-6.4> delta;
+  real<lower=0.0, upper=10> gamma;
+  real<lower=-10, upper=-3> delta;
   
   vector<lower=-1.5, upper=1.>[N_intervals] alpha;
   
