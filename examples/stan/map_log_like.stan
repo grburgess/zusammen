@@ -48,7 +48,11 @@ data {
   // int N_correlation; 
   // vector[N_correlation] model_correlation; 
 
-
+  int N_grid;
+  vector[N_grid] gamma_grid;
+  vector[N_grid] delta_grid;
+  vector[N_intervals] alpha;
+  vector[N_intervals] log_epeak;
 }
 
 transformed data {
@@ -79,47 +83,30 @@ transformed data {
 
   }
 
-}
-
-parameters {
-
-  real<lower=0.5, upper=10> gamma;
-  real<lower=-10, upper=-6.4> delta;
-  
-  vector<lower=-1.5, upper=1.>[N_intervals] alpha;
-  
-  vector<lower=-1,upper=7>[N_intervals] log_epeak;
-  
-}
-
-transformed parameters {
-
-  vector[N_intervals] log_energy_flux;
-  vector[N_intervals] log_epeak_rest_norm;
-
-  //log_epeak_rest_norm = log10(pow(10, log_epeak) .* (1+z) / 100);
-  log_epeak_rest_norm = log_epeak + log_zp1 - 2;
-  
-  log_energy_flux = delta + gamma * log_epeak_rest_norm;
-  
-}
-
-
-model {
-
-  gamma ~ normal(1.5, 2);
-
-  delta ~ normal(-6.5, 2); 
-  
-  alpha ~ normal(-1,.5);
-
-  log_epeak ~ normal(2., 1);
-
-  target += reduce_sum(partial_log_like, all_N, grainsize,  alpha,  log_epeak,  log_energy_flux,  observed_counts,  background_counts, background_errors,  mask, N_channels_used, exposure,  ebounds_lo,  ebounds_hi,  ebounds_add,  ebounds_half,  response,   idx_background_zero,   idx_background_nonzero,  N_bkg_zero, N_bkg_nonzero, N_dets,  N_chan,  N_echan,  max_n_chan,  emin,  emax) ;
 
 }
-
 
 generated quantities {
 
+  matrix[N_grid, N_grid] log_like;
+
+  vector[N_intervals] log_energy_flux;
+  vector[N_intervals] log_epeak_rest_norm;
+  
+  for (i in 1:N_grid) {
+    for (j in 1:N_grid) {
+      
+      log_epeak_rest_norm = log_epeak + log_zp1 - 2;
+      log_energy_flux = delta_grid[i] + gamma_grid[j] * log_epeak_rest_norm;
+
+      
+      log_like[i][j] = reduce_sum(partial_log_like, all_N, grainsize,  alpha,  log_epeak,  log_energy_flux,  observed_counts,
+				  background_counts, background_errors, mask, N_channels_used, exposure,  ebounds_lo,
+				  ebounds_hi,  ebounds_add,  ebounds_half,  response,  idx_background_zero,
+				  idx_background_nonzero,  N_bkg_zero,  N_bkg_nonzero, N_dets,  N_chan,
+				  N_echan,  max_n_chan,  emin,  emax);
+      
+    }
+  }
+  
 }
