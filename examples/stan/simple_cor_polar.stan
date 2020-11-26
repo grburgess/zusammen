@@ -42,13 +42,6 @@ data {
   vector[N_intervals] dl;
   vector[N_intervals] z;
 
-  // int N_gen_spectra; 
-  // vector[N_gen_spectra] model_energy;
-
-  // int N_correlation; 
-  // vector[N_correlation] model_correlation; 
-
-
 }
 
 transformed data {
@@ -57,6 +50,12 @@ transformed data {
   real emin = 10.;
   real emax = 1.E4;
 
+  real r0_min = -10;
+  real r0_max = -3 / sqrt(101);
+
+  real theta0_min = asin(1/sqrt(101));
+  real theta0_max = asin(1);
+  
   vector[N_intervals] log_zp1 = log10(z+1);
 
   vector[max_n_echan] ebounds_add[N_intervals, max(N_dets)];
@@ -83,12 +82,12 @@ transformed data {
 
 parameters {
 
-  real<lower=0.0, upper=10> gamma;
-  real<lower=-10, upper=-3> delta;
+  real<lower=-6, upper=-2> r0;
+  real<lower=pi()/2, upper=4.0> theta0;
   
   vector<lower=-1.5, upper=1.>[N_intervals] alpha;
   
-  vector<lower=-1,upper=4>[N_intervals] log_epeak;
+  vector<lower=-1,upper=7>[N_intervals] log_epeak;
   
 }
 
@@ -97,9 +96,15 @@ transformed parameters {
   vector[N_intervals] log_energy_flux;
   vector[N_intervals] log_epeak_rest_norm;
 
+  real gamma;
+  real delta;
+  
   //log_epeak_rest_norm = log10(pow(10, log_epeak) .* (1+z) / 100);
   log_epeak_rest_norm = log_epeak + log_zp1 - 2;
-  
+
+  gamma = - cos(theta0) / sin(theta0);
+  delta = r0 / sin(theta0);
+   
   log_energy_flux = delta + gamma * log_epeak_rest_norm;
   
 }
@@ -107,9 +112,9 @@ transformed parameters {
 
 model {
 
-  gamma ~ normal(1.5, 2);
+  //r0 ~ normal(-6.5 / sqrt(1.5^2 + 1), 2);
 
-  delta ~ normal(-6.5, 2); 
+  //theta0 ~ normal(asin(1 / sqrt(1.5^2 + 1)), 2);
   
   alpha ~ normal(-1,.5);
 
