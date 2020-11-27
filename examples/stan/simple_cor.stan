@@ -42,13 +42,6 @@ data {
   vector[N_intervals] dl;
   vector[N_intervals] z;
 
-  // int N_gen_spectra; 
-  // vector[N_gen_spectra] model_energy;
-
-  // int N_correlation; 
-  // vector[N_correlation] model_correlation; 
-
-
 }
 
 transformed data {
@@ -65,7 +58,6 @@ transformed data {
   int all_N[N_intervals];
 
   // precalculation of energy bounds
-
   for (n in 1:N_intervals) {
 
     all_N[n] = n;
@@ -87,8 +79,9 @@ parameters {
   real<lower=-10, upper=-3> delta;
   
   vector<lower=-1.5, upper=1.>[N_intervals] alpha;
-  
-  vector<lower=-1,upper=4>[N_intervals] log_epeak;
+
+  /* for log_epeak ordering */
+  simplex[N_intervals+1] log_epeak_s; 
   
 }
 
@@ -97,7 +90,10 @@ transformed parameters {
   vector[N_intervals] log_energy_flux;
   vector[N_intervals] log_epeak_rest_norm;
 
-  //log_epeak_rest_norm = log10(pow(10, log_epeak) .* (1+z) / 100);
+  /* decreasing ordered bounded by -1 and 4 */
+  ordered[N_intervals] log_epeak_r = -1 + 4*cumulative_sum(log_epeak_s[:N_intervals]);  
+  vector[N_intervals] log_epeak = reverse(log_epeak_r);
+  
   log_epeak_rest_norm = log_epeak + log_zp1 - 2;
   
   log_energy_flux = delta + gamma * log_epeak_rest_norm;
@@ -113,8 +109,8 @@ model {
   
   alpha ~ normal(-1,.5);
 
-  log_epeak ~ normal(2., 1);
-
+  //log_epeak ~ normal(2., 1);
+  
   target += reduce_sum(partial_log_like, all_N, grainsize,  alpha,  log_epeak,  log_energy_flux,  observed_counts,  background_counts, background_errors,  mask, N_channels_used, exposure,  ebounds_lo,  ebounds_hi,  ebounds_add,  ebounds_half,  response,   idx_background_zero,   idx_background_nonzero,  N_bkg_zero, N_bkg_nonzero, N_dets,  N_chan,  N_echan,  max_n_chan,  emin,  emax) ;
 
 }
