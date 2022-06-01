@@ -2,10 +2,59 @@ import numpy as np
 import numba as nb
 from interpolation import interp
 
+from astropy.constants import c
+from astropy.cosmology import WMAP9 as cosmo
+
 from cosmogrb.sampler.cpl_functions import cpl
 from cosmogrb.utils.numba_array import VectorFloat64
 
-from popsynth.distributions.cosmological_distribution import luminosity_distance
+
+from popsynth.utils.configuration import popsynth_config
+
+
+Om = popsynth_config["cosmology"]["Om"]
+h0 = popsynth_config["cosmology"]["h0"]
+
+Onu0 = cosmo.Onu0
+Ogamma0 = cosmo.Ogamma0
+
+Om_reduced = (1 - Om) / Om
+Om_sqrt = np.sqrt(Om)
+Ode = 1 - Om - (Onu0 + Ogamma0)
+sol = c.value  # speed of light
+
+dh = sol * 1.0e-3 / h0
+
+
+@nb.njit(fastmath=True)
+def Phi(x):
+    x2 = x * x
+    x3 = x * x * x
+    top = 1.0 + 1.320 * x + 0.441 * x2 + 0.02656 * x3
+    bottom = 1.0 + 1.392 * x + 0.5121 * x2 + 0.03944 * x3
+    return top / bottom
+
+
+@nb.njit(fastmath=True)
+def xx(z):
+    return Om_reduced / np.power(1.0 + z, 3)
+
+
+@nb.njit(fastmath=True)
+def luminosity_distance(z):
+    """
+    Luminosity distance in units of cm.
+
+    :param z: Redshift
+    """
+    x = xx(z)
+    z1 = 1.0 + z
+    val = (
+        (2 * dh * z1 / Om_sqrt)
+        * (Phi(xx(0)) - 1.0 / (np.sqrt(z1)) * Phi(x))
+        * 3.086e24
+    )  # in cm
+    return val
 
 
 @nb.njit(fastmath=True, cache=False)
@@ -48,9 +97,9 @@ def corr_cpl_evolution(
     N = time.shape[0]
     M = energy.shape[0]
 
-    a=10.
-    b=1e4
-    
+    a = 10.0
+    b = 1e4
+
     out = np.empty((N, M))
 
     for n in range(N):
@@ -300,25 +349,22 @@ def sample_energy(
 
             vtime[0] = times[i]
 
-            if (
-                y
-                <= (
-                    folded_cpl_evolution(
-                        x,
-                        vtime,
-                        peak_flux,
-                        ep_start,
-                        ep_tau,
-                        emin,
-                        emax,
-                        alpha,
-                        redshift,
-                        Nrest,
-                        gamma,
-                        effective_area,
-                    )
-                )[0, 0]
-            ):
+            if y <= (
+                folded_cpl_evolution(
+                    x,
+                    vtime,
+                    peak_flux,
+                    ep_start,
+                    ep_tau,
+                    emin,
+                    emax,
+                    alpha,
+                    redshift,
+                    Nrest,
+                    gamma,
+                    effective_area,
+                )
+            )[0, 0]:
 
                 out[i] = x[0]
                 break

@@ -1,5 +1,6 @@
 import collections
-import os
+
+from pathlib import Path
 
 import numpy as np
 import yaml
@@ -11,7 +12,7 @@ from threeML import TimeSeriesBuilder
 
 
 class GRBProcessor(object):
-    def __init__(self, gbm_grb, n_nai_to_use=3, use_bb=False):
+    def __init__(self, gbm_grb, n_nai_to_use: int = 3, use_bb: bool = False):
         """
         :param gbm_grb:
         :param n_nai_to_use:
@@ -23,9 +24,9 @@ class GRBProcessor(object):
         self._grb_save = gbm_grb
         assert n_nai_to_use > 0, "yo use some detectors"
 
-        self._n_nai_to_use = int(n_nai_to_use)
+        self._n_nai_to_use: int = int(n_nai_to_use)
 
-        self._use_bb = use_bb
+        self._use_bb: bool = use_bb
 
         self._config_dict = collections.OrderedDict()
 
@@ -79,12 +80,14 @@ class GRBProcessor(object):
     def _create_fits_files(self):
 
         self._fits_files = grbsave_to_gbm_fits(
-            self._grb_save, destination=self._grb_save.name, detectors=self._lc_names
+            self._grb_save,
+            destination=self._grb_save.name,
+            detectors=self._lc_names,
         )
 
     def _threeml_process(self):
 
-        self._config_dict["dir"] = os.path.abspath(self._grb_save.name)
+        self._config_dict["dir"] = str(Path(self._grb_save.name).absolute())
 
         det_dic = {}
 
@@ -120,7 +123,10 @@ class GRBProcessor(object):
                 if i < 1:
 
                     ts.create_time_bins(
-                        -25, self._grb_save.duration + 20, method="bayesblocks", p0=0.05
+                        -25,
+                        self._grb_save.duration + 1,
+                        method="bayesblocks",
+                        p0=0.1,
                     )
 
                     bins_to_use = ts
@@ -130,16 +136,16 @@ class GRBProcessor(object):
                     ts.read_bins(bins_to_use)
 
                 n_intervals = len(
-                    ts.bins.containing_interval(0, self._grb_save.duration, inner=True)
+                    ts.bins.containing_interval(0, self._grb_save.duration)
                 )
 
                 if n_intervals > 1:
 
                     ts.write_pha_from_binner(
-                        file_name=os.path.join(self._grb_save.name, name),
+                        file_name=Path(self._grb_save.name) / name,
                         start=0.0,
                         stop=self._grb_save.duration,
-                        inner=True,
+                        # inner=True,
                         force_rsp_write=True,
                         overwrite=True,
                     )
@@ -151,7 +157,7 @@ class GRBProcessor(object):
                     fig = ts.view_lightcurve(use_binner=True)
 
                     fig.savefig(
-                        f"{os.path.join(self._grb_save.name, name)}_lc.png",
+                        f"{Path(self._grb_save.name) / name}_lc.png",
                         bbox_inches="tight",
                     )
 
@@ -164,7 +170,7 @@ class GRBProcessor(object):
                 plugin = ts.to_spectrumlike()
 
                 plugin.write_pha(
-                    filename=os.path.join(self._grb_save.name, name),
+                    filename=Path(self._grb_save.name) / name,
                     force_rsp_write=True,
                     overwrite=True,
                 )
@@ -172,7 +178,7 @@ class GRBProcessor(object):
             self._config_dict["detectors"] = det_dic
 
             for k, v in self._fits_files[name].items():
-                os.remove(v)
+                Path(v).unlink()
 
     @property
     def yaml_params(self):
@@ -201,6 +207,18 @@ class AnalysisBuilder(object):
             process = GRBProcessor(v.grb, use_bb=use_bb)
 
             self._config_dict[k] = process.yaml_params
+
+    def write_yaml(self, file_name: str) -> None:
+        """TODO describe function
+
+        :param file_name:
+        :type file_name: str
+        :returns:
+
+        """
+
+        with open(file_name, "w") as f:
+            yaml.dump(self.yaml_params, stream=f, default_flow_style=False)
 
     @property
     def yaml_params(self):

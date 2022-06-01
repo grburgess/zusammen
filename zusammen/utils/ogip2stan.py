@@ -1,22 +1,32 @@
 import collections
 import os
 from glob import glob
+from pathlib import Path
+
+from typing import Dict, Optional, List
+
 
 import h5py
 import numpy as np
 import yaml
 from astropy.cosmology import WMAP9 as cosmo
 
-from threeML import OGIPLike
+from threeML.plugins.DispersionSpectrumLike import DispersionSpectrumLike
+from threeML.plugins.OGIPLike import OGIPLike
+from threeML.utils.OGIP.response import InstrumentResponse
+from threeML.utils.spectrum.binned_spectrum import BinnedSpectrumWithDispersion
+from threeML import DataList
 
 
-def sanitize_filename(filename, abspath=False):
+def sanitize_filename(filename, abspath: bool = False) -> Path:
 
-    sanitized = os.path.expandvars(os.path.expanduser(filename))
+    path: Path = Path(filename)
+
+    sanitized = path.expanduser()
 
     if abspath:
 
-        return os.path.abspath(sanitized)
+        return sanitized.absolute()
 
     else:
 
@@ -26,17 +36,19 @@ def sanitize_filename(filename, abspath=False):
 class GRBDatum(object):
     def __init__(
         self,
-        name,
-        observation,
-        background,
-        background_error,
-        response,
-        mc_energies,
-        ebounds,
-        exposure,
-        mask,
+        name: str,
+        observation: np.ndarray,
+        background: np.ndarray,
+        background_error: np.ndarray,
+        response: np.ndarray,
+        mc_energies: np.ndarray,
+        ebounds: np.ndarray,
+        exposure: float,
+        mask: np.ndarray,
         significance,
-    ):
+        tstart: Optional[float] = None,
+        tstop: Optional[float] = None,
+    ) -> None:
 
         self._n_chans = len(observation)
 
@@ -59,9 +71,12 @@ class GRBDatum(object):
         self._ebounds = ebounds
         self._mc_energies = mc_energies
 
-        self._exposure = exposure
+        self._exposure: float = exposure
         self._mask = mask
-        self._significance = significance
+        self._significance: float = significance
+
+        self._tstart: Optional[float] = tstart
+        self._tstop: Optional[float] = tstop
 
     @property
     def name(self):
@@ -155,8 +170,55 @@ class GRBDatum(object):
     def cbounds_hi(self):
         return self._ebounds[1:]
 
+    @property
+    def tstart(self) -> Optional[float]:
+        return self._tstart
+
+    @property
+    def tstop(self) -> Optional[float]:
+        return self._tstop
+
+    def to_plugin(self) -> DispersionSpectrumLike:
+
+        """
+        export this datum to a plugin
+
+        :returns:
+
+        """
+        # create the response
+        rsp = InstrumentResponse(
+            matrix=self._response,
+            ebounds=self._ebounds,
+            monte_carlo_energies=self._mc_energies,
+        )
+
+        observation = BinnedSpectrumWithDispersion(
+            counts=self._observation,
+            exposure=self._exposure,
+            response=rsp,
+            is_poisson=True,
+        )
+
+        background = BinnedSpectrumWithDispersion(
+            counts=self._background,
+            count_errors=self._background_error,
+            exposure=self._exposure,
+            response=rsp,
+            is_poisson=False,
+        )
+
+        return DispersionSpectrumLike(
+            self._name,
+            observation=observation,
+            background=background,
+            verbose=False,
+        )
+
     @classmethod
-    def from_ogip(cls, name, obs_file, bkg_file, rsp, selection, spectrum_number=1):
+    def from_ogip(
+        cls, name, obs_file, bkg_file, rsp, selection, spectrum_number=1
+    ):
         """
         Create the base data from FITS files.
 
@@ -198,6 +260,8 @@ class GRBDatum(object):
             ogip.exposure,
             ogip.mask,
             ogip.significance,
+            ogip.tstart,
+            ogip.tstop,
         )
 
     def to_hdf5_file_or_group(self, name):
@@ -223,9 +287,14 @@ class GRBDatum(object):
         f.attrs["name"] = self._name
         f.attrs["exposure"] = self._exposure
         f.attrs["significance"] = self._significance
+        f.attrs["tstart"] = self._tstart
+        f.attrs["tstop"] = self._tstop
 
         f.create_dataset(
-            "observation", data=self._observation, compression="lzf", shuffle=True
+            "observation",
+            data=self._observation,
+            compression="lzf",
+            shuffle=True,
         )
         f.create_dataset(
             "background", data=self._background, compression="lzf", shuffle=True
@@ -240,10 +309,17 @@ class GRBDatum(object):
             "response", data=self._response, compression="lzf", shuffle=True
         )
         f.create_dataset(
-            "mc_energies", data=self._mc_energies, compression="lzf", shuffle=True
+            "mc_energies",
+            data=self._mc_energies,
+            compression="lzf",
+            shuffle=True,
         )
-        f.create_dataset("ebounds", data=self._ebounds, compression="lzf", shuffle=True)
-        f.create_dataset("mask", data=self._mask, compression="lzf", shuffle=True)
+        f.create_dataset(
+            "ebounds", data=self._ebounds, compression="lzf", shuffle=True
+        )
+        f.create_dataset(
+            "mask", data=self._mask, compression="lzf", shuffle=True
+        )
 
         if is_file:
 
@@ -278,6 +354,8 @@ class GRBDatum(object):
         name = f.attrs["name"]
         exposure = f.attrs["exposure"]
         significance = f.attrs["significance"]
+        tstart = f.attrs["tstart"]
+        tstop = f.attrs["tstop"]
 
         observation = f["observation"][()]
         background = f["background"][()]
@@ -301,6 +379,8 @@ class GRBDatum(object):
             exposure,
             mask,
             significance,
+            tstart=tstart,
+            tstop=tstop,
         )
 
 
@@ -318,7 +398,7 @@ class GRBInterval(object):
 
         """
 
-        self._data = collections.OrderedDict()
+        self._data: Dict[str, GRBDatum] = collections.OrderedDict()
         self._n_dets = len(data)
 
         n_chans = []
@@ -336,6 +416,16 @@ class GRBInterval(object):
 
         self._max_n_chans = max(n_chans)
         self._max_n_echans = max(n_echans)
+
+    def to_plugins(self) -> Dict[str, DispersionSpectrumLike]:
+
+        out = collections.OrderedDict()
+
+        for k, v in self._data.items():
+
+            out[k] = v.to_plugin()
+
+        return out
 
     @property
     def name(self):
@@ -492,7 +582,7 @@ class GRBData(object):
         """
 
         self._intervals = []
-
+        self._significance_map = []
         n_chans = []
         n_echans = []
         self._n_detectors = []
@@ -506,11 +596,18 @@ class GRBData(object):
             self._n_detectors.append(interval.n_detectors)
             self._intervals.append(interval)
 
+        if intervals:
+
+            self._max_n_chans = max(n_chans)
+            self._max_n_echans = max(n_echans)
+
+        else:
+            self._max_n_chans = 0
+            self._max_n_echans = 0
+            self._n_detectors.append(0)
+
         self._n_intervals = len(intervals)
         self._name = grb_name
-
-        self._max_n_chans = max(n_chans)
-        self._max_n_echans = max(n_echans)
 
         self._z = z
 
@@ -621,7 +718,11 @@ class GRBData(object):
 
         return cls(grb_name, *intervals, z=z)
 
-    def to_hdf5_file_or_group(self, name):
+    def to_plugins(self) -> List[Dict[str, DispersionSpectrumLike]]:
+
+        return [interval.to_plugins() for interval in self._intervals]
+
+    def to_hdf5_file_or_group(self, name, sig_threshold=None):
         """
         write this GRB to a file or group
 
@@ -644,17 +745,36 @@ class GRBData(object):
             if_file = True
             f = h5py.File(name, "w")
 
-        f.attrs["z"] = self._z
-        f.attrs["n_intervals"] = self._n_intervals
+        n_intervals = 0
 
         for i in range(self._n_intervals):
 
-            grp = f.create_group(f"interval_{i}")
-            grp.attrs["grb_name"] = self._name
-
             # this will recurse down the intervals
 
+            if sig_threshold is not None:
+
+                flag = False
+
+                for k, v in self._intervals[i].data.items():
+
+                    if v.significance > sig_threshold:
+
+                        flag = True
+
+                        break
+
+                if not flag:
+                    print("shit")
+                    continue
+
+            grp = f.create_group(f"interval_{n_intervals}")
+            grp.attrs["grb_name"] = self._name
+
             self._intervals[i].to_hdf5_file_or_group(grp)
+            n_intervals += 1
+
+        f.attrs["z"] = self._z
+        f.attrs["n_intervals"] = n_intervals
 
         if is_file:
 
@@ -672,28 +792,30 @@ class DataSet(object):
 
         """
 
-        self._grbs = collections.OrderedDict()
+        self._grbs: Dict[str, GRBData] = collections.OrderedDict()
         self._n_intervals = 0
 
         n_echans = []
         n_chans = []
         n_dets = []
+        self._n_grbs = 0
 
         self._grb_id = {}
 
         for i, grb in enumerate(grbs):
 
             assert isinstance(grb, GRBData)
+            if grb.n_intervals > 0:
 
-            self._grbs[grb.name] = grb
-            self._n_intervals += grb.n_intervals
-            n_echans.append(grb.max_n_echans)
-            n_chans.append(grb.max_n_chans)
-            n_dets.append(grb.max_n_detectors)
-            # tag for stan
-            self._grb_id[grb.name] = i + 1
+                self._grbs[grb.name] = grb
+                self._n_intervals += grb.n_intervals
+                n_echans.append(grb.max_n_echans)
+                n_chans.append(grb.max_n_chans)
+                n_dets.append(grb.max_n_detectors)
+                # tag for stan
+                self._grb_id[grb.name] = i + 1
 
-        self._n_grbs = len(grbs)
+                self._n_grbs += 1
 
         self._max_n_chans = max(n_chans)
         self._max_n_echans = max(n_echans)
@@ -805,7 +927,7 @@ class DataSet(object):
 
         return cls(*grbs)
 
-    def to_hdf5_file(self, file_name):
+    def to_hdf5_file(self, file_name, sig_threshold=None):
         """
         Write the entire GRB data set to an HDF5 file
 
@@ -837,7 +959,50 @@ class DataSet(object):
                 # which will recursively write all
                 # the information to the file
 
-                grb.to_hdf5_file_or_group(grp)
+                grb.to_hdf5_file_or_group(grp, sig_threshold)
+
+    def to_plugins(self) -> Dict[str, List[Dict[str, DispersionSpectrumLike]]]:
+
+        out: Dict[
+            str, List[Dict[str, DispersionSpectrumLike]]
+        ] = collections.OrderedDict()
+
+        for grb_name, grb in self._grbs.items():
+
+            out[grb_name] = grb.to_plugins()
+
+        return out
+
+    def get_data_list_of_interval(self, interval: int) -> DataList:
+
+        itr = 0
+
+        tmp = self.to_plugins()
+
+        found = False
+
+        for k, _ in self._grbs.items():
+
+            for x in tmp[k]:
+
+                out = x
+
+                if interval == itr:
+
+                    found = True
+
+                    break
+
+                itr += 1
+
+            if found:
+
+                break
+        else:
+
+            raise RuntimeError()
+
+        return list(out.values())
 
     def to_stan_dict(self):
 
@@ -872,9 +1037,8 @@ class DataSet(object):
             (
                 self._n_intervals,
                 self._max_n_detectors,
-                
                 self._max_n_chans,
-                self._max_n_echans
+                self._max_n_echans,
             )
         )
 
@@ -882,7 +1046,9 @@ class DataSet(object):
         n_echan = np.zeros((self._n_intervals, self._max_n_detectors))
         n_chan = np.zeros((self._n_intervals, self._max_n_detectors))
 
-        masks = np.zeros((self._n_intervals, self._max_n_detectors, self._max_n_chans))
+        masks = np.zeros(
+            (self._n_intervals, self._max_n_detectors, self._max_n_chans)
+        )
         n_channels_used = np.zeros((self._n_intervals, self._max_n_detectors))
         grb_id = np.zeros(self._n_intervals)
         ebounds_lo = np.zeros(
@@ -937,18 +1103,18 @@ class DataSet(object):
                     n_bkg_zero[i, j] = datum.n_bkg_zero
                     n_bkg_nonzero[i, j] = datum.n_bkg_nonzero
 
-                    background_errors[i, j, : datum.n_chans] = datum.background_error
+                    background_errors[
+                        i, j, : datum.n_chans
+                    ] = datum.background_error
 
                     # responses[
                     #     i, j, : datum.n_echans, : datum.n_chans
                     # ] = datum.response_transpose
 
                     responses[
-                        i, j, :datum.n_chans, :  datum.n_echans
+                        i, j, : datum.n_chans, : datum.n_echans
                     ] = datum.response
 
-
-                    
                     this_mask = datum.mask_stan
 
                     masks[i, j, : len(this_mask)] = this_mask

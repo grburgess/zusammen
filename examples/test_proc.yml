@@ -1,0 +1,18 @@
+SynthGRB_0:
+  z: 1.9352497860016769
+  dir: /Users/jburgess/coding/projects/zusammen/examples/SynthGRB_0
+  n_intervals: 6
+  detectors:
+    b1: 250-30000
+    n0: 10-900
+    n1: 10-900
+    n5: 10-900
+SynthGRB_1:
+  z: 1.53154473971862
+  dir: /Users/jburgess/coding/projects/zusammen/examples/SynthGRB_1
+  n_intervals: 7
+  detectors:
+    b1: 250-30000
+    n1: 10-900
+    n3: 10-900
+    n5: 10-900

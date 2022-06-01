@@ -4,48 +4,50 @@ functions {
 #include cpl_interval_fold.stan
 }
 
+
+
 data {
 
   int<lower=1> N_intervals;
   int max_n_echan;
   int max_n_chan;
 
-  int<lower=0> N_dets[N_intervals]; // number of detectors poer data type
-  int<lower=0> N_chan[N_intervals, max(N_dets)]; // number of channels in each detector
-  int<lower=0> N_echan[N_intervals,  max(N_dets)]; // number of energy side channels in each detector
+  array[N_intervals] int<lower=0> N_dets; // number of detectors poer data type
+  array[N_intervals, max(N_dets)] int<lower=0> N_chan; // number of channels in each detector
+  array[N_intervals,  max(N_dets)] int<lower=0> N_echan; // number of energy side channels in each detector
 
-  int grb_id[N_intervals];
+  array[N_intervals] int grb_id;
   int N_grbs;
 
-  vector[max_n_echan] ebounds_hi[N_intervals, max(N_dets)];
-  vector[max_n_echan] ebounds_lo[N_intervals, max(N_dets)];
+  array[N_intervals, max(N_dets)] vector[max_n_echan] ebounds_hi;
+  array[N_intervals, max(N_dets)] vector[max_n_echan] ebounds_lo;
 
 
 
-  vector[max_n_chan] observed_counts[N_intervals, max(N_dets)];
-  vector[max_n_chan] background_counts[N_intervals, max(N_dets)];
-  vector[max_n_chan] background_errors[N_intervals, max(N_dets)];
+  array[N_intervals, max(N_dets)] vector[max_n_chan] observed_counts;
+  array[N_intervals, max(N_dets)] vector[max_n_chan] background_counts;
+  array[N_intervals, max(N_dets)] vector[max_n_chan] background_errors;
 
-  int idx_background_zero[N_intervals, max(N_dets), max_n_chan];
-  int idx_background_nonzero[N_intervals, max(N_dets), max_n_chan];
-  int N_bkg_zero[N_intervals,max(N_dets)];
-  int N_bkg_nonzero[N_intervals,max(N_dets)];
+  array[N_intervals, max(N_dets), max_n_chan] int idx_background_zero;
+  array[N_intervals, max(N_dets), max_n_chan] int idx_background_nonzero;
+  array[N_intervals,max(N_dets)] int N_bkg_zero;
+  array[N_intervals,max(N_dets)] int N_bkg_nonzero;
 
-  real exposure[N_intervals, max(N_dets)];
+  array[N_intervals, max(N_dets)] real exposure;
 
-  matrix[max_n_echan, max_n_chan] response[N_intervals, max(N_dets)];
+  array[N_intervals, max(N_dets)] matrix[max_n_chan, max_n_echan] response;
 
 
 
-  int mask[N_intervals, max(N_dets), max_n_chan];
-  int N_channels_used[N_intervals,max(N_dets)];
+  array[N_intervals, max(N_dets), max_n_chan] int mask;
+  array[N_intervals,max(N_dets)] int N_channels_used;
 
   vector[N_intervals] dl;
   vector[N_intervals] z;
 
 
-  int N_gen_spectra;
-  vector[N_gen_spectra] model_energy;
+  // int N_gen_spectra;
+  // vector[N_gen_spectra] model_energy;
 
   /* int N_correlation; */
   /* vector[N_correlation] model_correlation; */
@@ -54,14 +56,21 @@ data {
 }
 
 transformed data {
+  real x_r[0];
+  int x_i[0];
+
+  real kev2erg = 1.6021766e-9;
+  real erg2kev = 6.24151e8;
+
   vector[N_intervals] dl2 = square(dl);
   int N_total_channels = 0;
   real emin = 10.;
   real emax = 1E4;
-  vector[max_n_echan] ebounds_add[N_intervals, max(N_dets)];
-  vector[max_n_echan] ebounds_half[N_intervals, max(N_dets)];
 
-  int all_N[N_intervals];
+  array[N_intervals, max(N_dets)] vector[max_n_echan] ebounds_add;
+  array[N_intervals, max(N_dets)] vector[max_n_echan] ebounds_half;
+
+  array[N_intervals] int all_N;
 
 
   // precalculation of energy bounds
@@ -69,18 +78,14 @@ transformed data {
   for (n in 1:N_intervals) {
 
     all_N[n] = n;
-    
+
     for (m in 1:N_dets[n]) {
       ebounds_half[n, m, :N_echan[n, m]] = 0.5*(ebounds_hi[n, m, :N_echan[n, m]]+ebounds_lo[n, m, :N_echan[n, m]]);
       ebounds_add[n, m, :N_echan[n, m]] = (ebounds_hi[n, m, :N_echan[n, m]] - ebounds_lo[n, m, :N_echan[n, m]])/6.0;
       N_total_channels += N_channels_used[n,m];
     }
 
-
   }
-
-
-
 
 }
 
@@ -88,91 +93,81 @@ transformed data {
 
 parameters {
 
-  vector<lower=-1.8, upper=1.>[N_intervals] alpha;
+  //vector<lower=-1.8, upper=1.>[N_intervals] alpha;
+  vector<lower=-1.9, upper=1>[N_intervals] alpha;
+  vector<lower=0, upper=4>[N_intervals] log_ec;
+  //vector<lower=-5,upper=1>[N_intervals] log_K;
 
-  vector<lower=0, upper=5>[N_intervals] log_epeak;
-  vector[N_intervals] log_energy_flux;
+  //vector<lower=0, upper=5>[N_intervals] log_epeak;
+  // vector<lower=0>[N_intervals] log_epeak;
+
+  real log_energy_flux_mu_raw;
+  real<lower=0> log_energy_flux_sigma;
 
 
+  vector[N_intervals] log_energy_flux_raw; // raw energy flux norm
 
-
+  
 
 }
 
 transformed parameters {
+
+  vector[N_intervals] ec = pow(10, log_ec);
+  vector[N_intervals] log_energy_flux;
+  real log_energy_flux_mu;
+  vector[N_intervals] energy_flux;
+
+  vector[N_intervals] K;
+
+
+  log_energy_flux_mu = log_energy_flux_mu_raw -7;
+  
+  log_energy_flux = (log_energy_flux_mu) + log_energy_flux_raw * log_energy_flux_sigma;
+  energy_flux = pow(10, log_energy_flux);
+  //vector[N_intervals] epeak;
+  //vector[N_intervals] log_energy_flux;
+
+  for (n in 1:N_intervals){
+
+    array[3] real theta = {1., alpha[n], ec[n]};
+
+    //epeak[n] = (2+alpha[n]) * pow(10, log_ec[n]);
+
+    print(theta);
+    K[n] = erg2kev * energy_flux[n]  * inv(integrate_1d(cpl_flux_integrand, 10., 1.e4, theta, x_r, x_i));
+    //K[n] = erg2kev * energy_flux[n] * inv( ggrb_int_cpl(alpha[n], ec[n], 10., 1.e3) );
+
+  }
+
+
 
 }
 
 
 model {
 
-  //vector[N_total_channels] log_like;
-  //int pos = 1;
   int grainsize = 1;
 
+  // alpha ~ normal(-1,.5);
 
+  // log_epeak ~ normal(2.,1);
+
+  //log_energy_flux ~ normal(-7, 1);
+
+  log_energy_flux_mu_raw ~ std_normal();
+  log_energy_flux_sigma ~ std_normal();
+  
   alpha ~ normal(-1,.5);
 
-  log_epeak ~ normal(2.,1);
+  log_ec ~ normal(2.,1);
 
-  log_energy_flux ~ normal(-7, 1);
+  // log_K ~ normal(-1, 1);
 
+  // print(alpha);
+  // print(log_ec);
+  // print(log_K);
 
-  target += reduce_sum(partial_log_like, all_N, grainsize,  alpha,  log_epeak,  log_energy_flux,  observed_counts,  background_counts, background_errors,  mask, N_channels_used, exposure,  ebounds_lo,  ebounds_hi,  ebounds_add,  ebounds_half,  response,   idx_background_zero,   idx_background_nonzero,  N_bkg_zero, N_bkg_nonzero, N_dets,  N_chan,  N_echan,  max_n_chan,  emin,  emax) ;
-
-}
-
-
-generated quantities {
-
-  /* vector[N_gen_spectra] vfv_spectra[N_intervals]; */
-  // vector[max_n_chan] count_ppc[N_intervals, max(N_dets)];
-  /* //  vector[max_n_chan] source_ppc[N_intervals, max(N_dets)]; */
-  /* /\* vector[N_correlation] correlations[N_grbs]; *\/ */
-
-  /* for (n in 1:N_intervals) { */
-  /*   vfv_spectra[n] =square(model_energy) .* differential_flux(model_energy, pre_calc[n, 1], pre_calc[n, 2], alpha[n]); */
-
-  /* for (m in 1:N_dets[n]) { */
-
-  /*   /\* vector[N_channels_used[n,m]] ppc_background = background_model(observed_counts[n, m, mask[n,m,:N_channels_used[n,m]]], *\/ */
-  /*   /\*                                                             background_counts[n, m, mask[n,m,:N_channels_used[n,m]]], *\/ */
-  /*    /\*                                                            background_errors[n, m, mask[n,m,:N_channels_used[n,m]]], *\/ */
-  /*    /\*                                                            expected_model_counts[n, m, mask[n,m,:N_channels_used[n,m]]]); *\/ */
-
-  /*   //       vector[N_channels_used[n,m]] rate = ppc_background + expected_model_counts[n, m, mask[n,m,:N_channels_used[n,m]]] ; */
-  /*   vector[N_channels_used[n,m]] source_rate = expected_model_counts[n, m, mask[n,m,:N_channels_used[n,m]]]; */
-
-  /*   for (i in 1:N_channels_used[n,m]) { */
-
-
-  /*    /\* if (rate[i]<=0) { *\/ */
-  /*    /\*   print(pre_calc[n,:]); *\/ */
-  /*    /\*   print(ppc_background); *\/         */
-  /*    /\* } *\/                  */
-  /*    /\* if (rate[i]>2^30) { *\/ */
-  /*    /\*   count_ppc[n,m,i] = 0; *\/      */
-  /*    /\* } *\/          */
-  /*    /\* else { *\/       */
-  /*    /\*   count_ppc[n,m,i] = poisson_rng( rate[i] ); *\/         */
-  /*    /\* } *\/          */
-  /*    if (source_rate[i]>2^30) { */
-  /*      source_ppc[n,m,i] = 0; */
-  /*    } */
-
-  /*    else { */
-  /*      source_ppc[n,m,i] = poisson_rng( source_rate[i] ); */
-  /*    } */
-  /*   } */
-  /* } */
-
-  // }
-
-
-  /* for (n in 1:N_grbs) { */
-
-  /*   correlations[n] = delta[n] + gamma[n] * (model_correlation + log_zp1_grb[n] - 2 ) - log_dl2_grb[n]; */
-
-  /* } */
+  target += reduce_sum(partial_log_like, all_N, grainsize,  alpha,  ec,  K,  observed_counts,  background_counts, background_errors,  mask, N_channels_used,exposure,  ebounds_lo,  ebounds_hi,  ebounds_add,  ebounds_half, response, idx_background_zero, idx_background_nonzero, N_bkg_zero, N_bkg_nonzero, N_dets,  N_chan,  N_echan,  max_n_chan,  emin,  emax) ;
 
 }

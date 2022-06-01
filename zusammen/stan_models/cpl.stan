@@ -1,4 +1,3 @@
-  
 real ggrb_int_cpl(real alpha, real ec, real emin, real emax) {
   real i1 = gamma_q(2 + alpha, emin / ec) * tgamma(2 + alpha);
   real i2 = gamma_q(2 + alpha, emax / ec) * tgamma(2 + alpha);
@@ -6,47 +5,45 @@ real ggrb_int_cpl(real alpha, real ec, real emin, real emax) {
 }
 
 
-real [] band_precalculation(real flux, real alpha, real epeak, real emin, real emax) {
 
-  real ec;
-  real intflux;
-  real norm;
-  
-  real erg2keV = 6.24151e8;
-  
-    
-  if (alpha !=-2.) {
-    ec = epeak / (2. + alpha); 
-  }
-  else {
-    ec = epeak/.0001; 
-  }
+vector cpl(vector energy, real norm, real ec, real alpha) {
+
+  real piv = 100.;
+
+  // vector[num_elements(energy)] log_v = alpha * log(energy/piv) - energy/ec;
+
+  // return norm * exp(log_v);
 
     
-  intflux = ggrb_int_cpl(alpha, ec, emin, emax);
- 
     
+    return norm * pow(energy/piv, alpha) .* exp(-energy/ec);
   
-  norm = flux * erg2keV / intflux;
-
-  return {norm, ec};
 }
 
-vector differential_flux( vector energy, real norm , real ec, real alpha) {
 
-  int N = num_elements(energy); 
-  vector[N] out;
-  vector[N] ratio;
-       
-  ratio = energy/ec;
-    
-  for (n in 1:N) {
-      
+real cpl_indi(real energy, real K, real alpha, real ec) {
 
-    out[n] = norm * pow(ratio[n], alpha) * exp(-ratio[n]);
-  }
-    
+  real piv = 100.;
+
+  return K * pow(energy/piv, alpha) * exp(-energy/ec);
+  
+ 
+}
+
+real cpl_flux_integrand(real x, real xc, real[] theta, real[] x_r, int[] x_i) {
+
+  real out = x * cpl_indi(x, theta[1], theta[2], theta[3]);
+  
   return out;
+
+
+}
+
+
+
+vector differential_flux( vector energy, real norm, real ec, real alpha) {
+
+  return cpl(energy, norm, ec, alpha);
 	  
 }
 
