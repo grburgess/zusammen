@@ -62,7 +62,7 @@ class GRBProcessor(object):
 
             else:
                 if lc.extra_info["angle"] < bgo_anglular_distance:
-
+                    bgo_anglular_distance = lc.extra_info["angle"]
                     bgo_det = str(name)
 
         angular_distances = np.array(angular_distances)
