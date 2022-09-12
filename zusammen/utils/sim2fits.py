@@ -62,7 +62,7 @@ class GRBProcessor(object):
 
             else:
                 if lc.extra_info["angle"] < bgo_anglular_distance:
-
+                    bgo_anglular_distance = lc.extra_info["angle"]
                     bgo_det = str(name)
 
         angular_distances = np.array(angular_distances)
@@ -135,9 +135,27 @@ class GRBProcessor(object):
 
                     ts.read_bins(bins_to_use)
 
+                intervals = ts.bins.containing_interval(0,
+                                                        self._grb_save.duration,
+                                                        inner=False)
+
                 n_intervals = len(
-                    ts.bins.containing_interval(0, self._grb_save.duration)
+                    intervals
                 )
+                first_interval_num = 0
+
+                # check for the first bin in intervals if it is mostly
+                # before the GRB. If more than 50% of the time interval
+                # is before GRB we want to jump this interval for the fits
+                if ((0 - intervals[0].start) / (intervals[0].stop - intervals[0].start)) > 0.5:
+                    first_interval_num = 1
+                    n_intervals -= 1
+
+                # check for the last bin in intervals if it is mostly
+                # after the GRB. If more than 50% of the time interval
+                # is after the GRB we want to skip this interval for the fits
+                if ((intervals[-1].stop-self._grb_save.duration) / (intervals[-1].stop - intervals[-1].start)) > 0.5:
+                    n_intervals -= 1
 
                 if n_intervals > 1:
 
@@ -145,12 +163,13 @@ class GRBProcessor(object):
                         file_name=Path(self._grb_save.name) / name,
                         start=0.0,
                         stop=self._grb_save.duration,
-                        # inner=True,
+                        #inner=True,
                         force_rsp_write=True,
                         overwrite=True,
                     )
 
                 self._config_dict["n_intervals"] = n_intervals
+                self._config_dict["first_interval_num"] = first_interval_num
 
                 if n_intervals > 1:
 
