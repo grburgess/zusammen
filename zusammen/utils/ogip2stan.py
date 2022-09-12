@@ -570,7 +570,7 @@ class GRBInterval(object):
 
 
 class GRBData(object):
-    def __init__(self, grb_name, *intervals, z=None):
+    def __init__(self, grb_name, *intervals, z=None, first_interval_num=0):
         """
         Contains all the intervals from a single
         GRB
@@ -610,6 +610,11 @@ class GRBData(object):
         self._name = grb_name
 
         self._z = z
+        self._first_interval_num = first_interval_num
+
+    @property
+    def first_interval_num(self):
+        return self._first_interval_num
 
     @property
     def intervals(self):
@@ -666,14 +671,20 @@ class GRBData(object):
         intervals = []
 
         n_intervals = d["n_intervals"]
-        z = d["z"]
-        for i in range(n_intervals):
+        first_interval_num = d["first_interval_num"]
 
-            interval = GRBInterval.from_dict(d, grb_name, spectrum_number=i + 1)
+        z = d["z"]
+
+        for i in range(first_interval_num, first_interval_num+n_intervals):
+
+            interval = GRBInterval.from_dict(d,
+                                             grb_name,
+                                             spectrum_number=i + 1)
 
             intervals.append(interval)
 
-        return cls(grb_name, *intervals, z=z)
+        return cls(grb_name, *intervals, z=z,
+                   first_interval_num=first_interval_num)
 
     @classmethod
     def from_hdf5_file_or_group(cls, name):
@@ -704,9 +715,11 @@ class GRBData(object):
 
         n_intervals = f.attrs["n_intervals"]
 
+        first_interval_num = f.attrs["first_interval_num"]
+
         z = f.attrs["z"]
 
-        for i in range(n_intervals):
+        for i in range(first_interval_num, first_interval_num+n_intervals):
 
             interval = GRBInterval.from_hdf5_file_or_group(f[f"interval_{i}"])
 
@@ -775,7 +788,7 @@ class GRBData(object):
 
         f.attrs["z"] = self._z
         f.attrs["n_intervals"] = n_intervals
-
+        f.attrs["first_interval_num"] = self._first_interval_num
         if is_file:
 
             f.close()
